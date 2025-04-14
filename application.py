@@ -62,6 +62,25 @@ if mongo_uri := os.getenv("MONGODB_URI"):
     except Exception as e:
         logger.warning(f"Failed to initialize MongoDB: {e}. Continuing without persistence.")
 
+# Mount static files from the UI build directory
+ui_dir = Path(__file__).parent / "ui" / "dist"
+if ui_dir.exists():
+    logger.info(f"Mounting frontend static files from {ui_dir}")
+    app.mount("/assets", StaticFiles(directory=str(ui_dir / "assets")), name="static")
+    
+    @app.get("/", include_in_schema=False)
+    async def serve_spa(path: str = ""):
+        return FileResponse(str(ui_dir / "index.html"))
+        
+    @app.get("/{path:path}", include_in_schema=False)
+    async def serve_spa_paths(path: str):
+        # First check if the file exists as a static file
+        file_path = ui_dir / path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        # Otherwise, serve the index.html for client-side routing
+        return FileResponse(str(ui_dir / "index.html"))
+
 class ResearchRequest(BaseModel):
     protocol: str
     protocol_url: str | None = None
@@ -177,8 +196,8 @@ async def process_research(job_id: str, data: ResearchRequest):
         if mongodb:
             mongodb.update_job(job_id=job_id, status="failed", error=str(e))
 
-@app.get("/")
-async def ping():
+@app.get("/health")
+async def health_check():
     return {"message": "Alive"}
 
 @app.get("/research/pdf/{filename}")
@@ -260,30 +279,6 @@ async def generate_pdf(data: GeneratePDFRequest):
             raise HTTPException(status_code=500, detail=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-# Mount the frontend static files
-try:
-    ui_dist_path = os.path.join(os.path.dirname(__file__), "ui", "dist")
-    if os.path.exists(ui_dist_path):
-        logger.info(f"Mounting frontend static files from {ui_dist_path}")
-        # Create a sub-application to serve the static files
-        static_app = FastAPI()
-        # Serve index.html for all frontend routes (enable SPA routing)
-        @static_app.get("/{full_path:path}")
-        async def serve_spa(full_path: str):
-            # If the file exists, serve it directly
-            file_path = os.path.join(ui_dist_path, full_path)
-            if os.path.exists(file_path) and os.path.isfile(file_path):
-                return FileResponse(file_path)
-            # Otherwise serve index.html to enable client-side routing
-            return FileResponse(os.path.join(ui_dist_path, "index.html"))
-            
-        # Mount the static files sub-app at "/" but lower priority than API routes
-        app.mount("/", static_app, name="static")
-    else:
-        logger.warning(f"Frontend static files directory not found at {ui_dist_path}")
-except Exception as e:
-    logger.error(f"Error mounting static files: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
