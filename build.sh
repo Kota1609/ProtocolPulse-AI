@@ -3,15 +3,21 @@
 
 set -e  # Exit on error
 
-echo "Starting build process for ProtocolPulse AI..."
-
-# Install backend dependencies
-echo "Installing backend dependencies..."
+echo "===== Installing backend dependencies ====="
 pip install -r requirements.txt
 
-# Build the frontend
-echo "Building frontend..."
+echo "===== Installing frontend dependencies ====="
 cd ui
+npm install
+
+echo "===== Building frontend ====="
+npm run build
+cd ..
+
+echo "===== Build completed successfully! ====="
+echo "You can now run the application with: python application.py"
+
+echo "Starting build process for ProtocolPulse AI..."
 
 # Create a production .env file that works with combined deployment
 echo "Creating production .env file..."
@@ -20,15 +26,6 @@ cat > .env.production << EOL
 VITE_API_URL=
 VITE_WS_URL=
 EOL
-
-# Install frontend dependencies and build
-echo "Installing frontend dependencies..."
-npm install
-
-echo "Building frontend production bundle..."
-npm run build
-
-cd ..
 
 echo "Build completed successfully!"
 echo "You can now deploy the entire application to Render."

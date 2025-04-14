@@ -32,7 +32,7 @@ export default defineConfig({
       ? '""' // Empty string means use relative URLs
       : '"http://localhost:8000"',
     'import.meta.env.VITE_WS_URL': process.env.NODE_ENV === 'production'
-      ? '"ws:" + (window.location.protocol === "https:" ? "s" : "") + "//" + window.location.host'
+      ? '""' // Empty string for dynamic calculation in App.tsx
       : '"ws://localhost:8000"',
   }
 });

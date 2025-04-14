@@ -67,6 +67,16 @@ This document provides step-by-step instructions for deploying the combined fron
 - Look at the logs for any errors
 - Ensure your API keys are valid
 
+### If You Encounter Build Errors
+- If you see an error like `Invalid define value (must be an entity name or JS literal)` related to WebSocket URLs, make sure your `vite.config.ts` file is configured correctly. The WebSocket URL should be defined with a static string value instead of a JavaScript expression.
+- Solution: In `ui/vite.config.ts`, change the WebSocket URL definition to:
+  ```ts
+  'import.meta.env.VITE_WS_URL': process.env.NODE_ENV === 'production'
+    ? '""' // Empty string for dynamic calculation in App.tsx
+    : '"ws://localhost:8000"',
+  ```
+- This allows the App.tsx file to handle the dynamic WebSocket URL creation during runtime instead of build time.
+
 ### Free Tier Limitations
 - The free tier will spin down after 15 minutes of inactivity
 - The first request after inactivity will take longer to respond
