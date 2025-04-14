@@ -16,12 +16,23 @@ export default defineConfig({
     strictPort: true,
     host: true,
     proxy: {
+      // During development, proxy API requests
       '/api': {
-        target: 'http://tavily-company-research.eba-h6x8kkzc.us-east-1.elasticbeanstalk.com',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   },
+  // Define environment variables for different modes (dev vs prod)
+  define: {
+    // In production (combined deployment), API calls will be relative to the current host
+    'import.meta.env.VITE_API_URL': process.env.NODE_ENV === 'production' 
+      ? '""' // Empty string means use relative URLs
+      : '"http://localhost:8000"',
+    'import.meta.env.VITE_WS_URL': process.env.NODE_ENV === 'production'
+      ? '"ws:" + (window.location.protocol === "https:" ? "s" : "") + "//" + window.location.host'
+      : '"ws://localhost:8000"',
+  }
 });

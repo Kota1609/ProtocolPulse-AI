@@ -10,6 +10,7 @@ if env_path.exists():
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from backend.graph import Graph
 from backend.services.websocket_manager import WebSocketManager
@@ -259,6 +260,30 @@ async def generate_pdf(data: GeneratePDFRequest):
             raise HTTPException(status_code=500, detail=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Mount the frontend static files
+try:
+    ui_dist_path = os.path.join(os.path.dirname(__file__), "ui", "dist")
+    if os.path.exists(ui_dist_path):
+        logger.info(f"Mounting frontend static files from {ui_dist_path}")
+        # Create a sub-application to serve the static files
+        static_app = FastAPI()
+        # Serve index.html for all frontend routes (enable SPA routing)
+        @static_app.get("/{full_path:path}")
+        async def serve_spa(full_path: str):
+            # If the file exists, serve it directly
+            file_path = os.path.join(ui_dist_path, full_path)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                return FileResponse(file_path)
+            # Otherwise serve index.html to enable client-side routing
+            return FileResponse(os.path.join(ui_dist_path, "index.html"))
+            
+        # Mount the static files sub-app at "/" but lower priority than API routes
+        app.mount("/", static_app, name="static")
+    else:
+        logger.warning(f"Frontend static files directory not found at {ui_dist_path}")
+except Exception as e:
+    logger.error(f"Error mounting static files: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -20,7 +20,28 @@ import {
 const API_URL = import.meta.env.VITE_API_URL;
 const WS_URL = import.meta.env.VITE_WS_URL;
 
-if (!API_URL || !WS_URL) {
+// For combined deployment, use relative URLs if API_URL is empty
+const getApiUrl = () => {
+  if (!API_URL) {
+    return window.location.origin;
+  }
+  return API_URL;
+};
+
+// For combined deployment, calculate WebSocket URL if WS_URL is empty
+const getWsUrl = () => {
+  if (!WS_URL) {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}`;
+  }
+  return WS_URL;
+};
+
+// Use these functions to get the correct URLs
+const BASE_API_URL = getApiUrl();
+const BASE_WS_URL = getWsUrl();
+
+if (!BASE_API_URL || !BASE_WS_URL) {
   throw new Error(
     "Environment variables VITE_API_URL and VITE_WS_URL must be set"
   );
@@ -224,11 +245,11 @@ function App() {
 
     // Use the WS_URL directly if it's a full URL, otherwise construct it
     const wsUrl =
-      WS_URL.startsWith("wss://") || WS_URL.startsWith("ws://")
-        ? `${WS_URL}/research/ws/${jobId}`
+      BASE_WS_URL.startsWith("wss://") || BASE_WS_URL.startsWith("ws://")
+        ? `${BASE_WS_URL}/research/ws/${jobId}`
         : `${
             window.location.protocol === "https:" ? "wss:" : "ws:"
-          }//${WS_URL}/research/ws/${jobId}`;
+          }//${BASE_WS_URL}/research/ws/${jobId}`;
 
     console.log("Connecting to WebSocket URL:", wsUrl);
 
@@ -706,7 +727,7 @@ function App() {
     setHasScrolledToStatus(false); // Reset scroll flag when starting new research
 
     try {
-      const url = `${API_URL}/research`;
+      const url = `${BASE_API_URL}/research`;
 
       // Format the company URL if provided
       const formattedCompanyUrl = formData.companyUrl
@@ -774,7 +795,7 @@ function App() {
     setIsGeneratingPdf(true);
     try {
       console.log("Generating PDF with company name:", originalCompanyName);
-      const response = await fetch(`${API_URL}/generate-pdf`, {
+      const response = await fetch(`${BASE_API_URL}/generate-pdf`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -929,7 +950,7 @@ function App() {
   // Add function to check for final report
   const checkForFinalReport = async (jobId: string) => {
     try {
-      const response = await fetch(`${API_URL}/research/status/${jobId}`);
+      const response = await fetch(`${BASE_API_URL}/research/status/${jobId}`);
       if (!response.ok) throw new Error("Failed to fetch status");
 
       const data = await response.json();
